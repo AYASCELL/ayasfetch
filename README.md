@@ -11,6 +11,12 @@ A lightning-fast, ultra-modern system information fetch tool written in pure C.
 ## 📸 Preview
 *(When you upload to GitHub, take a screenshot of your terminal and put it here!)*
 
+## 🧩 Dependencies
+`ayasfetch` is incredibly lightweight, but relies on a few standards to look and work perfectly:
+- **Nerd Fonts**: Required for the beautiful hardware icons (CPU, GPU, Network, etc.) to render correctly. Make sure your terminal font is set to a Nerd Font (e.g., FiraCode Nerd Font, MesloLGS NF).
+- **iproute2**: For fetching the local IP address (`ip` command).
+- **make & gcc**: For compiling the source code.
+
 ## 🛠️ Compilation
 
 To compile `ayasfetch` from source, all you need is a C compiler (like `gcc`) and `make`.
@@ -47,4 +53,4 @@ sudo make uninstall
 The design and ASCII arts are built directly into the C code for maximum performance. If you want to change colors or add new logos, simply edit `ayasfetch.c` and recompile!
 
 ---
-**Created by [ayascell]** 💻
+**Created by [AYASCELL]** 💻

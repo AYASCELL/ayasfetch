@@ -60,8 +60,12 @@ This will place the binary in `/usr/local/bin/`.
 
 ## 🗑️ Uninstallation
 
-If you ever want to remove it:
+If you installed via the pre-compiled binary:
+```bash
+sudo rm /usr/local/bin/ayasfetch
+```
 
+If you installed from source:
 ```bash
 sudo make uninstall
 ```

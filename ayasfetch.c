@@ -1,4 +1,10 @@
 #include <ctype.h>
+/*
+ * ayasfetch - A fast, lightweight, and modern system fetch tool.
+ *
+ * Created by Ayascell (2026)
+ * "Sıfırdan saf C ile yazıldı."
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -120,8 +126,9 @@ void trim_newline(char *str) {
   }
 }
 
-/* Decode UTF-8 sequence starting at str[i], advance i past it, return codepoint
- */
+/* str[i] içindeki UTF-8 baytlarını okuyup, tek bir karakter (codepoint) olarak
+ * döndürür */
+
 static unsigned long decode_utf8(const char *str, int *i) {
   unsigned char c = (unsigned char)str[*i];
   unsigned long cp = 0;
@@ -145,8 +152,8 @@ static unsigned long decode_utf8(const char *str, int *i) {
   return cp;
 }
 
-/* Returns visible terminal column width of a string (handles ANSI + Nerd Font
- * 2-wide icons) */
+/* ANSI renk kodlarını ve ikonları dikkate alarak terminaldeki "gerçek" görünür
+ * genişliği hesaplar */
 int visible_length(const char *str) {
   int len = 0;
   int in_ansi = 0;
@@ -163,13 +170,14 @@ int visible_length(const char *str) {
 
     if ((unsigned char)str[i] >= 0x80) {
       unsigned long cp = decode_utf8(str, &i);
-      /* CJK and Emojis are 2 columns visually in Alacritty */
-      if ((cp >= 0x1F000 && cp <= 0x1F9FF) || /* Emojis */
+      /* Emojiler ve Çince/Japonca karakterler (Alacritty'de) 2 sütun kaplar */
+      if ((cp >= 0x1F000 && cp <= 0x1F9FF) || /* Emojiler */
           (cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2E80 && cp <= 0x303E) ||
           (cp >= 0x3041 && cp <= 0x33BF) || (cp >= 0xFF01 && cp <= 0xFF60)) {
         len += 2;
       } else {
-        /* Nerd Font PUA icons typically advance cursor by 1 column */
+        /* Bizim donanım logoları falan (Nerd Font) görsel olarak taşsa da
+         * imleci sadece 1 tık kaydırır */
         len += 1;
       }
     } else {
@@ -199,7 +207,7 @@ void get_os_name(char *buffer, size_t size) {
     }
     fclose(f);
   }
-  /* Append architecture */
+  /* Mimariyi (x86_64 gibi) ismin yanına yapıştıralım */
   struct utsname un;
   if (uname(&un) == 0) {
     snprintf(buffer, size, "%s %s", name, un.machine);
@@ -272,7 +280,7 @@ void get_cpu(char *buffer, size_t size) {
   char line[MAX_LINE_LEN];
   char model[256] = "";
   int logical = 0;
-  int phys_cores = 0; /* 'cpu cores' field for first socket */
+  int phys_cores = 0; /* İlk soket için 'cpu cores' satırındaki değer */
   int got_phys = 0;
   while (fgets(line, sizeof(line), f)) {
     if (strncmp(line, "model name", 10) == 0 && model[0] == '\0') {
@@ -298,11 +306,11 @@ void get_cpu(char *buffer, size_t size) {
   }
   fclose(f);
 
-  /* Detect P-cores vs E-cores via thread_siblings_list:
-     P-cores support Hyper-Threading → siblings list has range "a-b" (count as 2
-     logical) E-cores are single-threaded → siblings list is a single number
-     (count as 1 logical) We count logical threads per type, matching
-     fastfetch's (12+8) format */
+  /* Intel'in o meşhur Hibrit mimarisini (P-Core ve E-Core) ayırıyoruz:
+     P-core'larda Hyper-Threading var -> listesinde virgül/tire görünür (2
+     mantıksal çekirdek) E-core'larda yok -> tek sayıdır (1 mantıksal çekirdek)
+     Böylece fastfetch tarzı (12+8) falan yazdırabiliyoruz. AMD'de ise dümdüz
+     mantıksal çekirdek sayısını alır geçer. */
   int p_cores = 0, e_cores = 0;
   {
     int seen_cores[1024];
@@ -319,11 +327,12 @@ void get_cpu(char *buffer, size_t size) {
       int has_range = 0;
       if (fgets(sib, sizeof(sib), st)) {
         trim_newline(sib);
-        has_range = (strchr(sib, '-') != NULL);
+        has_range = (strchr(sib, '-') != NULL || strchr(sib, ',') != NULL);
       }
       fclose(st);
 
-      /* Deduplicate by physical core_id */
+      /* Aynı fiziksel çekirdeği iki defa saymayalım diye core_id'ye bakıp
+       * kontrol ediyoruz */
       snprintf(path, sizeof(path),
                "/sys/devices/system/cpu/cpu%d/topology/core_id", ci);
       FILE *cid_f = fopen(path, "r");
@@ -345,7 +354,6 @@ void get_cpu(char *buffer, size_t size) {
       if (seen_count < 1024)
         seen_cores[seen_count++] = core_id;
 
-      /* P-cores have HT → contribute 2 logical threads; E-cores contribute 1 */
       if (has_range)
         p_cores += 2;
       else
@@ -353,7 +361,8 @@ void get_cpu(char *buffer, size_t size) {
     }
   }
 
-  /* Real max freq: scan all CPUs and take global maximum */
+  /* İşlemcinin maks hızını bulmak için tüm çekirdekleri tarayıp en babayiğidini
+   * (en yükseğini) alıyoruz */
   double freq_ghz = 0.0;
   for (int ci = 0; ci < logical; ci++) {
     char path[128];
@@ -376,8 +385,8 @@ void get_cpu(char *buffer, size_t size) {
     }
   }
 
-  /* CPU temperature: find coretemp (Intel) or k10temp (AMD) hwmon,
-     read temp1_input = Package ID 0, matching fastfetch's behaviour */
+  /* İşlemci sıcaklığı: coretemp (Intel) veya k10temp (AMD) sensörünü bulup
+     temp1_input (Paket sıcaklığı) değerini okuyoruz */
   double temp_c = 0.0;
   {
     char path[256];
@@ -390,7 +399,7 @@ void get_cpu(char *buffer, size_t size) {
       if (fgets(hwname, sizeof(hwname), nf))
         trim_newline(hwname);
       fclose(nf);
-      /* Match Intel coretemp or AMD k10temp */
+      /* Sadece Intel coretemp veya AMD k10temp sensörlerini ciddiye alıyoruz */
       if (strcmp(hwname, "coretemp") == 0 || strcmp(hwname, "k10temp") == 0) {
         snprintf(path, sizeof(path), "/sys/class/hwmon/hwmon%d/temp1_input", h);
         FILE *tf = fopen(path, "r");
@@ -408,8 +417,8 @@ void get_cpu(char *buffer, size_t size) {
     char core_str[32] = "";
     if (p_cores > 0 && e_cores > 0)
       snprintf(core_str, sizeof(core_str), " (%d+%d)", p_cores, e_cores);
-    else if (phys_cores > 0)
-      snprintf(core_str, sizeof(core_str), " (%d)", phys_cores);
+    else if (logical > 0)
+      snprintf(core_str, sizeof(core_str), " (%d)", logical);
 
     char freq_str[32] = "";
     if (freq_ghz > 0.0)
@@ -431,11 +440,11 @@ void get_cpu(char *buffer, size_t size) {
 }
 
 static void strip_gpu_name(char *s) {
-  /* Remove " (rev XX)" suffix */
+  /* Ekran kartının sonundaki " (rev XX)" saçmalığını sil */
   char *rev = strstr(s, " (rev ");
   if (rev)
     *rev = '\0';
-  /* Remove " Corporation" after vendor if present */
+  /* Bazen markanın sonuna " Corporation" ekliyorlar, çok uzun oluyor silelim */
   char *corp = strstr(s, " Corporation");
   if (corp)
     memmove(corp, corp + 12, strlen(corp + 12) + 1);
@@ -443,7 +452,8 @@ static void strip_gpu_name(char *s) {
 
 void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
              size_t intg_size) {
-  /* --- Discrete GPU via nvidia-smi (preferred: clean name + temp) --- */
+  /* --- Harici Ekran Kartı (Harici GPU): nvidia-smi üzerinden çekiyoruz (En
+   * temizi bu, sıcaklığı da veriyor) --- */
   disc_buf[0] = '\0';
   FILE *f = popen("nvidia-smi --query-gpu=name,temperature.gpu "
                   "--format=csv,noheader 2>/dev/null",
@@ -453,7 +463,7 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
     if (fgets(line, sizeof(line), f)) {
       trim_newline(line);
       if (line[0] != '\0') {
-        /* Format: "Name, Temp" */
+        /* Formatımız: "İsim - Sıcaklık" */
         char *comma = strrchr(line, ',');
         if (comma) {
           *comma = '\0';
@@ -475,13 +485,13 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
     pclose(f);
   }
 
-  /* --- Integrated GPU via lspci --- */
+  /* --- Dahili Ekran Kartı (Dahili GPU): lspci ile anakarttan okuyoruz --- */
   intg_buf[0] = '\0';
   f = popen("lspci 2>/dev/null | grep -i 'vga\\|3d\\|2d'", "r");
   if (f) {
     char line[MAX_LINE_LEN];
     while (fgets(line, sizeof(line), f)) {
-      /* Skip NVIDIA (handled above) */
+      /* NVIDIA ise atla (Zaten yukarda hallettik onu) */
       if (strcasestr(line, "nvidia") || strcasestr(line, "amd") ||
           strcasestr(line, "radeon"))
         continue;
@@ -490,8 +500,8 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
         p += 2;
         trim_newline(p);
         strip_gpu_name(p);
-        /* Also strip leading "Intel " duplication if any */
-        /* Get Intel iGPU frequency from sysfs */
+        /* İsminde fazladan "Intel " geçiyorsa silelim, çok yer kaplıyor */
+        /* Intel iGPU'nun saat hızını sysfs içinden gizlice çekiyoruz */
         double igpu_ghz = 0.0;
         FILE *gf =
             popen("cat /sys/class/drm/card*/gt_boost_freq_mhz "
@@ -514,7 +524,8 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
     pclose(f);
   }
 
-  /* Fallback: if no discrete GPU found via nvidia-smi, try lspci for it */
+  /* B planı: nvidia-smi çalışmazsa veya AMD GPU varsa mecburen lspci ile
+   * anakarttan çek */
   if (disc_buf[0] == '\0') {
     f = popen("lspci 2>/dev/null | grep -i 'vga\\|3d\\|2d' | grep -i "
               "'nvidia\\|amd\\|radeon'",
@@ -560,7 +571,8 @@ void get_disk(char *buffer, size_t size) {
 }
 
 void get_network(char *buffer, size_t size) {
-  /* Get active interface from routing table */
+  /* Hangi ağ kartından internete çıktığımızı (wlan0, eth0) routing tablosundan
+   * bul */
   char iface[32] = "";
   FILE *f = popen("ip -o -4 route get 1.1.1.1 2>/dev/null", "r");
   if (f) {
@@ -583,7 +595,7 @@ void get_network(char *buffer, size_t size) {
     return;
   }
 
-  /* Get IP with CIDR prefix length */
+  /* IP adresini maskesiyle beraber (Örn: 192.168.1.5/24) alalım */
   char cmd[128];
   snprintf(cmd, sizeof(cmd), "ip -o -4 addr show dev %s 2>/dev/null", iface);
   f = popen(cmd, "r");
@@ -687,11 +699,11 @@ void get_term(char *buffer, size_t size) {
       char line[256];
       if (fgets(line, sizeof(line), f)) {
         trim_newline(line);
-        /* Strip git hash in parens: "alacritty 0.17.0 (94e7c887)" -> "alacritty
-         * 0.17.0" */
+        /* Sürüm numarasının yanındaki o çirkin git hash kodlarını silelim:
+         * "alacritty 0.17.0 (94e7c887)" -> "alacritty 0.17.0" */
         char *paren = strchr(line, '(');
         if (paren && paren > line) {
-          *(paren - 1) = '\0'; /* remove space before '(' too */
+          *(paren - 1) = '\0'; /* Parantezden önceki boşluğu da yok et */
         }
         strncpy(buffer, line, size - 1);
         buffer[size - 1] = '\0';
@@ -812,7 +824,7 @@ int main() {
   labels[info_count] = "cpu";
   values[info_count] = cpu;
   info_count++;
-  /* Show discrete GPU first, then integrated */
+  /* Önce harici ekran kartı (güçlü olan), sonra dahili olan basılır */
   if (gpu1[0] != '\0') {
     icons[info_count] = COLOR_RED "";
     labels[info_count] = "gpu";
@@ -838,7 +850,7 @@ int main() {
   values[info_count] = network;
   info_count++;
 
-  /* Select Logo based on OS */
+  /* İşletim sistemini algılayıp şov yapacağımız logoyu seçiyoruz */
   const char **ascii_art_ptr = ascii_art_tux;
   int ascii_h = ascii_height_tux;
   int ascii_w = ascii_width_tux;
@@ -852,7 +864,7 @@ int main() {
     ascii_art_ptr = ascii_art_ubuntu;
     ascii_h = ascii_height_ubuntu;
     ascii_w = ascii_width_ubuntu;
-    ascii_color = COLOR_RED; // Ubuntu orange/red
+    ascii_color = COLOR_RED; // Ubuntu'nun meşhur turuncumsu kırmızısı
   } else if (strcasestr(os, "Debian")) {
     ascii_art_ptr = ascii_art_debian;
     ascii_h = ascii_height_debian;
@@ -885,10 +897,13 @@ int main() {
   snprintf(title, MAX_LINE_LEN, "%s@%s 💻", user, host);
   int title_len = visible_length(title);
 
-  int inner_width = max_line_len + 4; // Base width from content
+  int inner_width =
+      max_line_len +
+      4; // Boşlukları da sayıp çerçevenin gerçek genişliğini hesapla
 
-  /* title row takes: "═════ " (6) + title_len + " " (1) = title_len + 7.
-     We want at least 2 "═" after the title, so title_len + 9 minimum. */
+  /* Üst çerçevenin matematiği: "╭───── " (7 karakter) + başlığın boyutu + " "
+   * (1 boşluk). Başlıktan sonra en az 2 "═" karakteri olması için title_len + 9
+   * minimum genişlik gerekiyor. */
   if (inner_width < title_len + 9) {
     inner_width = title_len + 9;
   }
@@ -899,7 +914,8 @@ int main() {
   printf("\n");
   for (int i = 0; i < lines_to_print; i++) {
     if (i < ascii_h)
-      printf("%s%-*s%s   ", ascii_color, ascii_w, ascii_art_ptr[i], COLOR_RESET);
+      printf("%s%-*s%s   ", ascii_color, ascii_w, ascii_art_ptr[i],
+             COLOR_RESET);
     else
       printf("%-*s   ", ascii_w, "");
 

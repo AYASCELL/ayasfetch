@@ -49,8 +49,14 @@ If you ever want to remove it:
 sudo make uninstall
 ```
 
+---
+
+<div align="center">
+  <b>Built with ❤️ by Ayascell</b>
+</div>
+
 ## ⚙️ Configuration
 The design and ASCII arts are built directly into the C code for maximum performance. If you want to change colors or add new logos, simply edit `ayasfetch.c` and recompile!
 
 ---
-**Created by [AYASCELL]** 💻
+**Created by [ayascell]** 💻

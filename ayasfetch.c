@@ -463,22 +463,27 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
     if (fgets(line, sizeof(line), f)) {
       trim_newline(line);
       if (line[0] != '\0') {
-        /* Formatımız: "İsim - Sıcaklık" */
-        char *comma = strrchr(line, ',');
-        if (comma) {
-          *comma = '\0';
-          trim_newline(line);
-          int temp = atoi(comma + 2);
-          if (temp > 0) {
-            const char *t_col = (temp < 60)
-                                    ? COLOR_GREEN
-                                    : ((temp < 80) ? COLOR_YELLOW : COLOR_RED);
-            snprintf(disc_buf, disc_size, "%s - %s%d.0°C%s [Discrete]", line,
-                     t_col, temp, COLOR_WHITE);
-          } else
-            snprintf(disc_buf, disc_size, "%s [Discrete]", line);
+        /* Hata mesajı kontrolü (Sürücü çöktüğünde nvidia-smi ekrana çok uzun bir hata basar, bunu GPU sanmayalım) */
+        if (strstr(line, "NVIDIA-SMI") != NULL || strstr(line, "has failed") != NULL) {
+          disc_buf[0] = '\0';
         } else {
-          snprintf(disc_buf, disc_size, "%s [Discrete]", line);
+          /* Formatımız: "İsim - Sıcaklık" */
+          char *comma = strrchr(line, ',');
+          if (comma) {
+            *comma = '\0';
+            trim_newline(line);
+            int temp = atoi(comma + 2);
+            if (temp > 0) {
+              const char *t_col = (temp < 60)
+                                      ? COLOR_GREEN
+                                      : ((temp < 80) ? COLOR_YELLOW : COLOR_RED);
+              snprintf(disc_buf, disc_size, "%s - %s%d.0°C%s [Discrete]", line,
+                       t_col, temp, COLOR_WHITE);
+            } else
+              snprintf(disc_buf, disc_size, "%s [Discrete]", line);
+          } else {
+            snprintf(disc_buf, disc_size, "%s [Discrete]", line);
+          }
         }
       }
     }
@@ -487,12 +492,12 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
 
   /* --- Dahili Ekran Kartı (Dahili GPU): lspci ile anakarttan okuyoruz --- */
   intg_buf[0] = '\0';
-  f = popen("lspci 2>/dev/null | grep -i 'vga\\|3d\\|2d'", "r");
+  f = popen("LC_ALL=C lspci 2>/dev/null | LC_ALL=C grep -i 'vga\\|3d\\|2d'", "r");
   if (f) {
     char line[MAX_LINE_LEN];
     while (fgets(line, sizeof(line), f)) {
-      /* NVIDIA ise atla (Zaten yukarda hallettik onu) */
-      if (strcasestr(line, "nvidia") || strcasestr(line, "amd") ||
+      if (strcasestr(line, "nvidia") || strstr(line, "NVIDIA") || 
+          strcasestr(line, "amd") || strstr(line, "AMD") ||
           strcasestr(line, "radeon"))
         continue;
       char *p = strstr(line, ": ");
@@ -527,7 +532,7 @@ void get_gpu(char *disc_buf, size_t disc_size, char *intg_buf,
   /* B planı: nvidia-smi çalışmazsa veya AMD GPU varsa mecburen lspci ile
    * anakarttan çek */
   if (disc_buf[0] == '\0') {
-    f = popen("lspci 2>/dev/null | grep -i 'vga\\|3d\\|2d' | grep -i "
+    f = popen("LC_ALL=C lspci 2>/dev/null | LC_ALL=C grep -i 'vga\\|3d\\|2d' | LC_ALL=C grep -i "
               "'nvidia\\|amd\\|radeon'",
               "r");
     if (f) {

@@ -117,6 +117,19 @@ const char *ascii_art_fedora[] = {"             .',;::::;,'.",
 const int ascii_height_fedora = 19;
 const int ascii_width_fedora = 38;
 
+const char *ascii_art_ayasos[] = {
+    "       //        //\\          ",
+    "      //        //  \\         ",
+    "     //        //    \\        ",
+    "    //        //      \\       ",
+    "   //======  //        \\      ",
+    "  //        //==========\\     ",
+    " //        //            \\    ",
+    "//        //              \\   ",
+};
+const int ascii_height_ayasos = 8;
+const int ascii_width_ayasos = 30;
+
 void trim_newline(char *str) {
   int len = strlen(str);
   while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == ' ' ||
@@ -791,66 +804,68 @@ int main() {
 
   char os_icon[32];
   if (strcasestr(os, "Arch"))
-    strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
+    strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
   else if (strcasestr(os, "Ubuntu"))
-    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
+    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
   else if (strcasestr(os, "Debian"))
-    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
+    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
   else if (strcasestr(os, "Fedora"))
-    strncpy(os_icon, COLOR_BLUE "", sizeof(os_icon));
+    strncpy(os_icon, COLOR_BLUE "", sizeof(os_icon));
+  else if (strcasestr(os, "AYAS"))
+    strncpy(os_icon, COLOR_GOLD "", sizeof(os_icon));
   else
-    strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
+    strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
 
   icons[info_count] = os_icon;
   labels[info_count] = "distro";
   values[info_count] = os;
   info_count++;
-  icons[info_count] = COLOR_CYAN "";
+  icons[info_count] = COLOR_CYAN "";
   labels[info_count] = "kernel";
   values[info_count] = kernel;
   info_count++;
-  icons[info_count] = COLOR_GREEN "󰅐";
+  icons[info_count] = COLOR_GREEN "";
   labels[info_count] = "uptime";
   values[info_count] = uptime;
   info_count++;
-  icons[info_count] = COLOR_BLUE "";
+  icons[info_count] = COLOR_BLUE "";
   labels[info_count] = "desktop";
   values[info_count] = desktop;
   info_count++;
-  icons[info_count] = COLOR_PURPLE "";
+  icons[info_count] = COLOR_PURPLE "";
   labels[info_count] = "term";
   values[info_count] = term;
   info_count++;
-  icons[info_count] = COLOR_CYAN "";
+  icons[info_count] = COLOR_CYAN "";
   labels[info_count] = "shell";
   values[info_count] = shell;
   info_count++;
-  icons[info_count] = COLOR_BLUE "";
+  icons[info_count] = COLOR_BLUE "";
   labels[info_count] = "cpu";
   values[info_count] = cpu;
   info_count++;
   /* Önce harici ekran kartı (güçlü olan), sonra dahili olan basılır */
   if (gpu1[0] != '\0') {
-    icons[info_count] = COLOR_RED "";
+    icons[info_count] = COLOR_RED "";
     labels[info_count] = "gpu";
     values[info_count] = gpu1;
     info_count++;
   }
   if (gpu2[0] != '\0') {
-    icons[info_count] = COLOR_BLUE "";
+    icons[info_count] = COLOR_BLUE "";
     labels[info_count] = "gpu";
     values[info_count] = gpu2;
     info_count++;
   }
-  icons[info_count] = COLOR_YELLOW "󰋊";
+  icons[info_count] = COLOR_YELLOW "";
   labels[info_count] = "disk";
   values[info_count] = disk;
   info_count++;
-  icons[info_count] = COLOR_GREEN "󰍛";
+  icons[info_count] = COLOR_GREEN "";
   labels[info_count] = "memory";
   values[info_count] = memory;
   info_count++;
-  icons[info_count] = COLOR_RED "󰤨";
+  icons[info_count] = COLOR_RED "";
   labels[info_count] = "network";
   values[info_count] = network;
   info_count++;
@@ -865,6 +880,11 @@ int main() {
     ascii_h = ascii_height_arch;
     ascii_w = ascii_width_arch;
     ascii_color = COLOR_CYAN;
+  } else if (strcasestr(os, "AYAS")) {
+    ascii_art_ptr = ascii_art_ayasos;
+    ascii_h = ascii_height_ayasos;
+    ascii_w = ascii_width_ayasos;
+    ascii_color = COLOR_GOLD;
   } else if (strcasestr(os, "Ubuntu")) {
     ascii_art_ptr = ascii_art_ubuntu;
     ascii_h = ascii_height_ubuntu;

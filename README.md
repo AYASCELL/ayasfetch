@@ -1,4 +1,4 @@
-# ayasfetch 🚀
+<img width="1139" height="432" alt="Ekran Görüntüsü_20260720_133055" src="https://github.com/user-attachments/assets/8112d774-746c-4932-97b8-453b60e2531c" /># ayasfetch 🚀
 
 A lightning-fast, ultra-modern system information fetch tool written in pure C.
 
@@ -9,6 +9,7 @@ A lightning-fast, ultra-modern system information fetch tool written in pure C.
 
 ## 📸 Preview
 <img width="1124" height="393" alt="image" src="https://github.com/user-attachments/assets/542682ac-f2f0-4e62-be35-051e9c8d3ec8" />
+![Uploading Ekran Görüntüsü_20260720_133055.png…]()
 
 ## 🧩 Dependencies
 `ayasfetch` is incredibly lightweight, but relies on a few standards to look and work perfectly:

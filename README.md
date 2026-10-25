@@ -70,5 +70,40 @@ If you installed from source:
 sudo make uninstall
 ```
 
-## ⚙️ Configuration
-The design and ASCII arts are built directly into the C code for maximum performance. If you want to change colors or add new logos, simply edit `ayasfetch.c` and recompile!
+## 🎨 Custom Colors & Configuration
+
+### Command Line Options
+
+You can easily change the color theme on the fly using the `-c` or `--color` flag:
+
+```bash
+# Use a built-in color
+ayasfetch -c gold
+ayasfetch -c purple
+ayasfetch -c cyan
+
+# Use any custom 24-bit TrueColor hex code
+ayasfetch -c '#fc0fc0'
+ayasfetch --color '#38bdf8'
+
+# List all available colors and format instructions
+ayasfetch --list-colors
+# or
+ayasfetch --color list
+```
+
+### Configuration File (`~/.config/ayasfetch/config`)
+
+To make your preferred color permanent across terminal sessions and updates:
+
+1. Generate a configuration file:
+   ```bash
+   ayasfetch --gen-config
+   ```
+2. Edit `~/.config/ayasfetch/config` and set your desired color or hex code:
+   ```ini
+   color = purple
+   # or
+   color = #fc0fc0
+   ```
+*(Note: Your config file is stored in your user directory and will never be overwritten or lost during updates!)*

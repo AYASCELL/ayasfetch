@@ -845,7 +845,276 @@ void get_term(char *buffer, size_t size) {
     strncpy(buffer, "Unknown", size);
 }
 
-int main() {
+static int parse_hex_color(const char *hex, char *out_buf, size_t out_size) {
+  if (!hex)
+    return 0;
+  if (hex[0] == '#')
+    hex++;
+  size_t len = strlen(hex);
+  if (len < 6)
+    return 0;
+
+  for (int j = 0; j < 6; j++) {
+    if (!isxdigit((unsigned char)hex[j]))
+      return 0;
+  }
+
+  char r_str[3] = {hex[0], hex[1], '\0'};
+  char g_str[3] = {hex[2], hex[3], '\0'};
+  char b_str[3] = {hex[4], hex[5], '\0'};
+
+  unsigned int r = (unsigned int)strtoul(r_str, NULL, 16);
+  unsigned int g = (unsigned int)strtoul(g_str, NULL, 16);
+  unsigned int b = (unsigned int)strtoul(b_str, NULL, 16);
+
+  snprintf(out_buf, out_size, "\x1b[38;2;%u;%u;%um", r, g, b);
+  return 1;
+}
+
+static int resolve_color(const char *name, char *out_buf, size_t out_size) {
+  if (!name || name[0] == '\0')
+    return 0;
+
+  while (*name == ' ' || *name == '\t')
+    name++;
+
+  if (strcasecmp(name, "auto") == 0 || strcasecmp(name, "default") == 0) {
+    out_buf[0] = '\0';
+    return 1;
+  }
+
+  if (name[0] == '#' || (strlen(name) >= 6 && isxdigit((unsigned char)name[0]) &&
+                         isxdigit((unsigned char)name[1]))) {
+    if (parse_hex_color(name, out_buf, out_size))
+      return 1;
+  }
+
+  if (strcasecmp(name, "cyan") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;23;147;209m");
+    return 1;
+  } else if (strcasecmp(name, "gold") == 0 || strcasecmp(name, "yellow") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;218;165;32m");
+    return 1;
+  } else if (strcasecmp(name, "red") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;231;76;60m");
+    return 1;
+  } else if (strcasecmp(name, "green") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;46;204;113m");
+    return 1;
+  } else if (strcasecmp(name, "blue") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;52;152;219m");
+    return 1;
+  } else if (strcasecmp(name, "purple") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;155;89;182m");
+    return 1;
+  } else if (strcasecmp(name, "magenta") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;224;86;253m");
+    return 1;
+  } else if (strcasecmp(name, "pink") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;255;105;180m");
+    return 1;
+  } else if (strcasecmp(name, "orange") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;230;126;34m");
+    return 1;
+  } else if (strcasecmp(name, "white") == 0) {
+    snprintf(out_buf, out_size, "\x1b[1;97m");
+    return 1;
+  } else if (strcasecmp(name, "gray") == 0 || strcasecmp(name, "grey") == 0) {
+    snprintf(out_buf, out_size, "\x1b[38;2;127;140;141m");
+    return 1;
+  }
+  return 0;
+}
+
+static void get_config_path(char *path, size_t size) {
+  const char *xdg = getenv("XDG_CONFIG_HOME");
+  if (xdg && xdg[0] != '\0') {
+    snprintf(path, size, "%s/ayasfetch/config", xdg);
+  } else {
+    const char *home = getenv("HOME");
+    if (home) {
+      snprintf(path, size, "%s/.config/ayasfetch/config", home);
+    } else {
+      path[0] = '\0';
+    }
+  }
+}
+
+static void read_config(char *out_color, size_t c_size) {
+  if (out_color && c_size > 0)
+    out_color[0] = '\0';
+
+  char path[512];
+  get_config_path(path, sizeof(path));
+  if (path[0] == '\0')
+    return;
+
+  FILE *f = fopen(path, "r");
+  if (!f)
+    return;
+
+  char line[256];
+  while (fgets(line, sizeof(line), f)) {
+    char *p = line;
+    while (*p == ' ' || *p == '\t')
+      p++;
+    if (*p == '#' || *p == '\n' || *p == '\r' || *p == '\0')
+      continue;
+
+    char *eq = strchr(p, '=');
+    if (!eq)
+      continue;
+
+    *eq = '\0';
+    char *key = p;
+    char *val = eq + 1;
+
+    trim_newline(key);
+    while (*val == ' ' || *val == '\t')
+      val++;
+    trim_newline(val);
+
+    if (strcasecmp(key, "color") == 0 && out_color) {
+      strncpy(out_color, val, c_size - 1);
+      out_color[c_size - 1] = '\0';
+      break;
+    }
+  }
+  fclose(f);
+}
+
+static void generate_config(void) {
+  char path[512];
+  get_config_path(path, sizeof(path));
+  if (path[0] == '\0') {
+    fprintf(stderr, "Hata: HOME dizini bulunamadı.\n");
+    return;
+  }
+
+  char dir[512];
+  snprintf(dir, sizeof(dir), "%s", path);
+  char *slash = strrchr(dir, '/');
+  if (slash) {
+    *slash = '\0';
+    char cmd[550];
+    snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
+    (void)system(cmd);
+  }
+
+  FILE *f = fopen(path, "w");
+  if (!f) {
+    fprintf(stderr, "Hata: Yapılandırma dosyası oluşturulamadı: %s\n", path);
+    return;
+  }
+  fprintf(f, "# ayasfetch Yapılandırma Dosyası\n");
+  fprintf(f, "# Konum: %s\n\n", path);
+  fprintf(f, "# Renk Seçimi:\n");
+  fprintf(f, "# İsimler: auto, cyan, gold, yellow, red, green, blue, purple, magenta, pink, orange, white, gray\n");
+  fprintf(f, "# Veya herhangi bir TrueColor hex kodu: #fc0fc0, #fc0fc0fc, #1793d1, #daa520\n\n");
+  fprintf(f, "color = auto\n");
+  fclose(f);
+  printf("\x1b[32m✔ Yapılandırma dosyası oluşturuldu:\x1b[0m %s\n", path);
+}
+
+static void print_color_list(void) {
+  printf("\n\x1b[1;97mayasfetch Renk Paleti:\x1b[0m\n\n");
+  printf("  \x1b[38;2;23;147;209m● cyan\x1b[0m      \x1b[90m->\x1b[0m  Arch Mavisi / Turkuaz \x1b[90m(#1793d1)\x1b[0m\n");
+  printf("  \x1b[38;2;218;165;32m● gold\x1b[0m      \x1b[90m->\x1b[0m  AYAS OS Altın Sarısı \x1b[90m(#daa520)\x1b[0m\n");
+  printf("  \x1b[38;2;52;152;219m● blue\x1b[0m      \x1b[90m->\x1b[0m  Fedora Mavisi \x1b[90m(#3498db)\x1b[0m\n");
+  printf("  \x1b[38;2;231;76;60m● red\x1b[0m       \x1b[90m->\x1b[0m  Ubuntu / Debian Kırmızısı \x1b[90m(#e74c3c)\x1b[0m\n");
+  printf("  \x1b[38;2;46;204;113m● green\x1b[0m     \x1b[90m->\x1b[0m  Zümrüt Yeşili \x1b[90m(#2ecc71)\x1b[0m\n");
+  printf("  \x1b[38;2;155;89;182m● purple\x1b[0m    \x1b[90m->\x1b[0m  Asil Mor \x1b[90m(#9b59b6)\x1b[0m\n");
+  printf("  \x1b[38;2;224;86;253m● magenta\x1b[0m   \x1b[90m->\x1b[0m  Parlak Macenta \x1b[90m(#e056fd)\x1b[0m\n");
+  printf("  \x1b[38;2;255;105;180m● pink\x1b[0m      \x1b[90m->\x1b[0m  Canlı Pembe \x1b[90m(#ff69b4)\x1b[0m\n");
+  printf("  \x1b[38;2;230;126;34m● orange\x1b[0m    \x1b[90m->\x1b[0m  Turuncu \x1b[90m(#e67e22)\x1b[0m\n");
+  printf("  \x1b[1;97m● white\x1b[0m     \x1b[90m->\x1b[0m  Saf Beyaz \x1b[90m(#ffffff)\x1b[0m\n");
+  printf("  \x1b[38;2;127;140;141m● gray\x1b[0m      \x1b[90m->\x1b[0m  Minimalist Gri \x1b[90m(#7f8c8d)\x1b[0m\n\n");
+  printf("\x1b[1;97mÖzel Hex Kodu (24-bit TrueColor):\x1b[0m\n");
+  printf("  İstediğiniz herhangi bir HEX renk kodunu (#RRGGBB veya #RRGGBBAA) verebilirsiniz.\n");
+  printf("  Örnek: \x1b[36mayasfetch --color '#fc0fc0'\x1b[0m  veya  \x1b[36mayasfetch -c '#fc0fc0fc'\x1b[0m\n\n");
+  printf("\x1b[1;97mKullanım:\x1b[0m\n");
+  printf("  ayasfetch -c <renk>\n");
+  printf("  ayasfetch --color <renk>\n\n");
+}
+
+static void print_help(void) {
+  printf("\n\x1b[1;97mayasfetch 🚀 - Saf C ile yazılmış hafif ve modern fetch aracı\x1b[0m\n\n");
+  printf("\x1b[1mKULLANIM:\x1b[0m\n");
+  printf("  ayasfetch [SEÇENEKLER]\n\n");
+  printf("\x1b[1mSEÇENEKLER:\x1b[0m\n");
+  printf("  -c, --color <renk>       Tema rengini ayarlar (isim veya #fc0fc0)\n");
+  printf("      --list-colors        Kullanılabilir tüm renkleri listeler\n");
+  printf("      --gen-config         ~/.config/ayasfetch/config dosyasını oluşturur\n");
+  printf("  -v, --version            Sürüm bilgisini gösterir\n");
+  printf("  -h, --help               Bu yardım ekranını gösterir\n\n");
+  printf("\x1b[1mÖRNEKLER:\x1b[0m\n");
+  printf("  ayasfetch -c gold\n");
+  printf("  ayasfetch -c purple\n");
+  printf("  ayasfetch -c '#fc0fc0'\n");
+  printf("  ayasfetch --list-colors\n");
+  printf("  ayasfetch --color list\n\n");
+  printf("\x1b[1mYAPILANDIRMA DOSYASI:\x1b[0m\n");
+  printf("  ~/.config/ayasfetch/config\n");
+  printf("  (Güncellemelerde silinmez, ayarlarınız kalıcı kalır)\n\n");
+}
+
+static void print_version(void) {
+  printf("ayasfetch v1.0.3\n");
+  printf("Created by Ayascell (2026) - Sıfırdan saf C ile yazıldı.\n");
+}
+
+int main(int argc, char *argv[]) {
+  char cli_color_arg[64] = "";
+  char custom_color_ansi[64] = "";
+  int custom_color_set = 0;
+
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+      print_help();
+      return 0;
+    } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+      print_version();
+      return 0;
+    } else if (strcmp(argv[i], "--list-colors") == 0 || strcmp(argv[i], "--colors") == 0) {
+      print_color_list();
+      return 0;
+    } else if (strcmp(argv[i], "--gen-config") == 0) {
+      generate_config();
+      return 0;
+    } else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--color") == 0) {
+      if (i + 1 < argc) {
+        strncpy(cli_color_arg, argv[++i], sizeof(cli_color_arg) - 1);
+      } else {
+        fprintf(stderr, "Hata: %s seçeneği bir renk değeri gerektirir.\n", argv[i]);
+        return 1;
+      }
+    } else if (strncmp(argv[i], "--color=", 8) == 0) {
+      strncpy(cli_color_arg, argv[i] + 8, sizeof(cli_color_arg) - 1);
+    }
+  }
+
+  if (cli_color_arg[0] != '\0') {
+    if (strcasecmp(cli_color_arg, "list") == 0) {
+      print_color_list();
+      return 0;
+    }
+    if (resolve_color(cli_color_arg, custom_color_ansi, sizeof(custom_color_ansi))) {
+      if (custom_color_ansi[0] != '\0')
+        custom_color_set = 1;
+    } else {
+      fprintf(stderr, "Uyarı: '%s' geçerli bir renk veya #RRGGBB hex kodu değil. Varsayılan renk kullanılıyor.\n", cli_color_arg);
+    }
+  } else {
+    char config_color[64] = "";
+    read_config(config_color, sizeof(config_color));
+    if (config_color[0] != '\0') {
+      if (resolve_color(config_color, custom_color_ansi, sizeof(custom_color_ansi))) {
+        if (custom_color_ansi[0] != '\0')
+          custom_color_set = 1;
+      }
+    }
+  }
+
   char user[MAX_LINE_LEN] = "user";
   char host[MAX_LINE_LEN] = "hostname";
   char os[MAX_LINE_LEN];
@@ -899,8 +1168,12 @@ int main() {
   char *values[20];
   int info_count = 0;
 
-  char os_icon[32];
-  if (strcasestr(os, "AYAS"))
+  char os_icon[64];
+  if (custom_color_set) {
+    strncpy(os_icon, custom_color_ansi, sizeof(os_icon) - 1);
+    os_icon[sizeof(os_icon) - 1] = '\0';
+  }
+  else if (strcasestr(os, "AYAS"))
     strncpy(os_icon, COLOR_GOLD "", sizeof(os_icon));
   else if (is_arch_distro(os, os_id, os_id_like))
     strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
@@ -999,6 +1272,10 @@ int main() {
     ascii_color = COLOR_BLUE;
   }
 
+  if (custom_color_set) {
+    ascii_color = custom_color_ansi;
+  }
+
   int max_val_len = 0;
   for (int i = 0; i < info_count; i++) {
     int vlen = visible_length(values[i]);
@@ -1033,7 +1310,9 @@ int main() {
   int lines_to_print =
       (ascii_h > (info_count + 4)) ? ascii_h : (info_count + 4);
 
-  const char *box_color = (strcasestr(os, "AYAS")) ? COLOR_GOLD : COLOR_CYAN;
+  const char *box_color = custom_color_set
+                              ? custom_color_ansi
+                              : ((strcasestr(os, "AYAS")) ? COLOR_GOLD : COLOR_CYAN);
 
   printf("\n");
   for (int i = 0; i < lines_to_print; i++) {

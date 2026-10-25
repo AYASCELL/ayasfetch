@@ -1033,6 +1033,8 @@ int main() {
   int lines_to_print =
       (ascii_h > (info_count + 4)) ? ascii_h : (info_count + 4);
 
+  const char *box_color = (strcasestr(os, "AYAS")) ? COLOR_GOLD : COLOR_CYAN;
+
   printf("\n");
   for (int i = 0; i < lines_to_print; i++) {
     if (i < ascii_h)
@@ -1042,12 +1044,12 @@ int main() {
       printf("%-*s   ", ascii_w, "");
 
     if (i == 0) {
-      printf("%s╭───── %s%s%s %s", COLOR_GOLD, COLOR_WHITE, title, COLOR_GOLD,
-             COLOR_GOLD);
+      printf("%s╓───── %s%s%s %s", box_color, COLOR_WHITE, title, box_color,
+             box_color);
       int rem = inner_width - 6 - title_len - 1;
       for (int j = 0; j < rem; j++)
         printf("─");
-      printf("╮%s\n", COLOR_RESET);
+      printf("╖%s\n", COLOR_RESET);
     } else if (i <= info_count) {
       int idx = i - 1;
       char inner_str[1024];
@@ -1058,31 +1060,31 @@ int main() {
       if (padding < 0)
         padding = 0;
 
-      printf("%s│%s%s%*s%s│%s\n", COLOR_GOLD, COLOR_RESET, inner_str, padding,
-             "", COLOR_GOLD, COLOR_RESET);
+      printf("%s║%s%s%*s%s║%s\n", box_color, COLOR_RESET, inner_str, padding,
+             "", box_color, COLOR_RESET);
     } else if (i == info_count + 1) {
-      printf("%s├", COLOR_GOLD);
+      printf("%s╟", box_color);
       for (int j = 0; j < inner_width; j++)
         printf("─");
-      printf("┤%s\n", COLOR_RESET);
+      printf("╢%s\n", COLOR_RESET);
     } else if (i == info_count + 2) {
       char *colors_str = "\x1b[30m● \x1b[31m● \x1b[32m● \x1b[33m● \x1b[34m● "
                          "\x1b[35m● \x1b[36m● \x1b[37m●";
       char inner_str[1024];
       snprintf(inner_str, sizeof(inner_str), "  colors  %s>  %s", COLOR_GRAY,
-               colors_str);
+                colors_str);
       int vlen = visible_length(inner_str);
       int padding = inner_width - vlen;
       if (padding < 0)
         padding = 0;
 
-      printf("%s│%s%s%*s%s│%s\n", COLOR_GOLD, COLOR_RESET, inner_str, padding,
-             "", COLOR_GOLD, COLOR_RESET);
+      printf("%s║%s%s%*s%s║%s\n", box_color, COLOR_RESET, inner_str, padding,
+             "", box_color, COLOR_RESET);
     } else if (i == info_count + 3) {
-      printf("%s╰", COLOR_GOLD);
+      printf("%s╙", box_color);
       for (int j = 0; j < inner_width; j++)
         printf("─");
-      printf("╯%s\n", COLOR_RESET);
+      printf("╜%s\n", COLOR_RESET);
     } else {
       printf("\n");
     }

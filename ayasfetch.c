@@ -1044,12 +1044,12 @@ int main() {
       printf("%-*s   ", ascii_w, "");
 
     if (i == 0) {
-      printf("%s╓───── %s%s%s %s", box_color, COLOR_WHITE, title, box_color,
+      printf("%s╔═════ %s%s%s %s", box_color, COLOR_WHITE, title, box_color,
              box_color);
       int rem = inner_width - 6 - title_len - 1;
       for (int j = 0; j < rem; j++)
-        printf("─");
-      printf("╖%s\n", COLOR_RESET);
+        printf("═");
+      printf("╗%s\n", COLOR_RESET);
     } else if (i <= info_count) {
       int idx = i - 1;
       char inner_str[1024];
@@ -1063,10 +1063,10 @@ int main() {
       printf("%s║%s%s%*s%s║%s\n", box_color, COLOR_RESET, inner_str, padding,
              "", box_color, COLOR_RESET);
     } else if (i == info_count + 1) {
-      printf("%s╟", box_color);
+      printf("%s╠", box_color);
       for (int j = 0; j < inner_width; j++)
-        printf("─");
-      printf("╢%s\n", COLOR_RESET);
+        printf("═");
+      printf("╣%s\n", COLOR_RESET);
     } else if (i == info_count + 2) {
       char *colors_str = "\x1b[30m● \x1b[31m● \x1b[32m● \x1b[33m● \x1b[34m● "
                          "\x1b[35m● \x1b[36m● \x1b[37m●";
@@ -1081,10 +1081,10 @@ int main() {
       printf("%s║%s%s%*s%s║%s\n", box_color, COLOR_RESET, inner_str, padding,
              "", box_color, COLOR_RESET);
     } else if (i == info_count + 3) {
-      printf("%s╙", box_color);
+      printf("%s╚", box_color);
       for (int j = 0; j < inner_width; j++)
-        printf("─");
-      printf("╜%s\n", COLOR_RESET);
+        printf("═");
+      printf("╝%s\n", COLOR_RESET);
     } else {
       printf("\n");
     }

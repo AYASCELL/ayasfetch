@@ -15,48 +15,60 @@ A lightning-fast, ultra-modern system information fetch tool written in pure C.
 - **iproute2**: For fetching the local IP address (`ip` command).
 - **make & gcc**: For compiling the source code.
 
-## 🚀 Installation
+## 🚀 Installation & Update
 
-There are two ways to install `ayasfetch`: using the pre-compiled binary (easiest) or compiling from source.
+### Method 1: Automatic One-Liner (Recommended ⚡)
 
-### Method 1: Pre-compiled Binary (Easy)
-If you don't want to compile from source, you can simply download the standalone binary from the Releases page and install it directly:
+The fastest and easiest way to install or update `ayasfetch` directly from the latest source code:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/AYASCELL/ayasfetch/main/install.sh | bash
+```
+
+> **Tip:** Whenever you want to **update** to the newest version in the future, simply re-run this exact same command! It will automatically fetch the latest code, compile it for your system, and update `ayasfetch`.
+
+---
+
+### Method 2: Manual Compile from Source (🛠️)
+
+If you prefer to clone and build manually:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/AYASCELL/ayasfetch.git
+cd ayasfetch
+
+# 2. Compile and install
+make
+sudo make install
+```
+
+To update in the future:
+```bash
+cd ayasfetch
+git pull
+make
+sudo make install
+```
+
+*(Note for Packagers: The Makefile fully supports `PREFIX` and `DESTDIR` variables, making it natively compatible with AUR PKGBUILDs and other package managers!)*
+
+---
+
+### Method 3: Standalone Pre-compiled Binary (📦)
+
+If you don't want to compile from source, you can download the standalone binary from the Releases page:
 
 ```bash
 # 1. Download the latest binary from GitHub Releases
 wget https://github.com/AYASCELL/ayasfetch/releases/latest/download/ayasfetch-x86_64-linux
 
-# 2. Move it to your local bin directory (Installs the app)
+# 2. Move it to your local bin directory
 sudo mv ayasfetch-x86_64-linux /usr/local/bin/ayasfetch
 
 # 3. Give it execution permissions
 sudo chmod +x /usr/local/bin/ayasfetch
 ```
-*That's it! You can now just type `ayasfetch` in your terminal.*
-
-### Method 2: Compile from Source
-
-To compile `ayasfetch` from source, all you need is a C compiler (like `gcc`) and `make`.
-
-```bash
-git clone https://github.com/ayascell/ayasfetch.git
-cd ayasfetch
-make
-```
-
-You can test it locally by running `./ayasfetch`.
-
-## 📦 Installation
-
-To install `ayasfetch` system-wide so you can run it from anywhere by just typing `ayasfetch`:
-
-```bash
-sudo make install
-```
-
-This will place the binary in `/usr/local/bin/`.
-
-*(Note for Packagers: The Makefile fully supports `PREFIX` and `DESTDIR` variables, making it natively compatible with AUR PKGBUILDs and other package managers!)*
 
 ## 🗑️ Uninstallation
 

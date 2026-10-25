@@ -70,6 +70,117 @@ sudo mv ayasfetch-x86_64-linux /usr/local/bin/ayasfetch
 sudo chmod +x /usr/local/bin/ayasfetch
 ```
 
+## 📖 Post-Installation & Usage Guide
+
+Once installed, simply run:
+```bash
+ayasfetch
+```
+
+### 💡 Run Automatically on Terminal Launch
+Want `ayasfetch` to automatically greet you every time you open a new terminal window? Add it to your shell configuration file:
+
+- **Bash** (`~/.bashrc`):
+  ```bash
+  echo "ayasfetch" >> ~/.bashrc
+  ```
+- **Zsh** (`~/.zshrc`):
+  ```bash
+  echo "ayasfetch" >> ~/.zshrc
+  ```
+- **Fish** (`~/.config/fish/config.fish`):
+  ```bash
+  echo "ayasfetch" >> ~/.config/fish/config.fish
+  ```
+
+---
+
+## 🎨 Complete Theme & Color Customization Guide
+
+You can customize the accent and box border color **directly from your terminal** without touching any configuration files.
+
+### 1. Test Colors on the Fly (`-c, --color`)
+Preview how different themes look in your terminal before saving:
+```bash
+# Try built-in color themes
+ayasfetch -c gold          # AYAS OS gold
+ayasfetch -c purple        # Elegant purple
+ayasfetch -c cyan          # Arch / Cachy cyan
+ayasfetch -c red           # Debian / Ubuntu red
+ayasfetch -c green         # Emerald green
+
+# Try any custom 24-bit TrueColor HEX code (#RRGGBB or #RRGGBBAA)
+ayasfetch -c '#fc0fc0'
+ayasfetch -c '#38bdf8'
+```
+
+### 2. Make Your Favorite Color Permanent (`-s, --set-color`)
+Found a theme or HEX color you love? Save it permanently with one command:
+```bash
+# Save a built-in color permanently
+ayasfetch -s purple
+ayasfetch --set-color gold
+
+# Save any custom hex code permanently
+ayasfetch -s '#fc0fc0'
+```
+> **How it works:** This command automatically saves your choice to `~/.config/ayasfetch/config`. Every subsequent `ayasfetch` execution will use this theme. Your preferences are stored in your home directory and will **never be lost or overwritten during updates!**
+
+### 3. Revert to Default Distro Theme
+Want to return to the original system distribution theme (e.g., Cyan for CachyOS/Arch, Gold for AYAS)?
+```bash
+# Set back to default automatic mode
+ayasfetch -s auto
+
+# Or delete the config file entirely and reset to defaults
+ayasfetch --reset-config
+```
+
+### 4. Interactive Help & Color Palette
+```bash
+# List all built-in color names and formatting rules
+ayasfetch --list-colors
+
+# View all available CLI options and examples
+ayasfetch --help
+```
+
+### 5. Manual Configuration File (`~/.config/ayasfetch/config`)
+If you prefer to edit files manually:
+```bash
+# Generate default config if it doesn't exist
+ayasfetch --gen-config
+
+# Open in your favorite text editor
+nano ~/.config/ayasfetch/config
+```
+
+Example file content:
+```ini
+# ayasfetch Configuration File
+# Options: auto, cyan, gold, yellow, red, green, blue, purple, magenta, pink, orange, white, gray
+# Or any TrueColor hex code: #fc0fc0, #1793d1, #daa520
+color = purple
+```
+
+---
+
+## ⚡ CLI Cheatsheet & Command Reference
+
+| Command | Shortcut | Description |
+|---|---|---|
+| `ayasfetch` | | Displays system specs with current active theme |
+| `ayasfetch -c <color>` | `--color` | Temporarily tests a color theme or HEX code |
+| `ayasfetch -s <color>` | `--set-color` | **Permanently** saves color to `~/.config/ayasfetch/config` |
+| `ayasfetch -s auto` | `--set-color auto` | Reverts permanent color back to default distro theme |
+| `ayasfetch --reset-config` | `--reset` | Deletes the config file and resets everything to defaults |
+| `ayasfetch --list-colors` | `--colors` | Prints list of available color names & palette preview |
+| `ayasfetch --gen-config` | | Generates `~/.config/ayasfetch/config` file |
+| `ayasfetch -h` | `--help` | Shows detailed help screen and usage examples |
+| `ayasfetch -v` | `--version` | Shows version information |
+
+---
+
 ## 🗑️ Uninstallation
 
 If you installed via the pre-compiled binary:
@@ -82,70 +193,4 @@ If you installed from source:
 sudo make uninstall
 ```
 
-## 🎨 Custom Colors & Configuration
-
-You can customize the accent and box border color either temporarily or permanently directly from your terminal, without needing to manually edit files!
-
-### 1. Test Colors on the Fly (`-c, --color`)
-
-Preview any color in your terminal without saving it:
-
-```bash
-# Try a built-in color
-ayasfetch -c gold
-ayasfetch -c purple
-ayasfetch -c cyan
-
-# Try any 24-bit TrueColor hex code (#RRGGBB or #RRGGBBAA)
-ayasfetch -c '#fc0fc0'
-ayasfetch -c '#38bdf8'
-
-# List all built-in color names and formats
-ayasfetch --list-colors
-```
-
-### 2. Make Your Favorite Color Permanent (`-s, --set-color`)
-
-Found a color you love? Save it permanently with a single command from your terminal:
-
-```bash
-# Save a built-in color permanently
-ayasfetch -s purple
-ayasfetch --set-color gold
-
-# Save a custom hex code permanently
-ayasfetch -s '#fc0fc0'
-```
-This automatically writes your choice to `~/.config/ayasfetch/config`. Every subsequent `ayasfetch` run will now use your chosen theme.
-
-### 3. Reverting to Default Distro Colors
-
-Want to go back to the original distribution theme (e.g. Cyan for CachyOS/Arch, Gold for AYAS)?
-
-```bash
-# Set back to auto/default
-ayasfetch -s auto
-
-# Or reset and delete the configuration file
-ayasfetch --reset-config
-```
-
-### 4. Manual Configuration File (`~/.config/ayasfetch/config`)
-
-You can also create or edit the config file manually if you prefer:
-```bash
-ayasfetch --gen-config
-nano ~/.config/ayasfetch/config
-```
-
-Example `~/.config/ayasfetch/config`:
-```ini
-color = purple
-# or
-color = #fc0fc0
-# or default distro mode:
-color = auto
-```
-
-> **Note:** The configuration file is stored safely in your user home directory (`~/.config/ayasfetch/config`), so updates or reinstallations will **never** overwrite or erase your custom settings!
 

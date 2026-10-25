@@ -1,11 +1,14 @@
 # ayasfetch 🚀
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A lightning-fast, ultra-modern system information fetch tool written in pure C.
 
 `ayasfetch` takes the beloved concept of terminal fetch utilities (like neofetch or fastfetch) and gives it a highly customized, elegant visual touch featuring:
-- Beautiful single-line rounded borders.
+- Beautiful double-line Unicode borders with full box-drawing aesthetics.
 - Lightweight, zero-dependency C codebase for instant execution.
-- Dynamic OS logo detection.
+- Dynamic OS logo detection (including Arch/CachyOS derivatives).
+- 24-bit TrueColor customization with persistent configuration.
 
 ## 📸 Preview
 <img width="1139" height="432" alt="Ekran Görüntüsü_20260720_133055" src="https://github.com/user-attachments/assets/8112d774-746c-4932-97b8-453b60e2531c" />
@@ -192,5 +195,13 @@ If you installed from source:
 ```bash
 sudo make uninstall
 ```
+
+---
+
+## 📜 License
+
+This project is open-source and licensed under the [MIT License](LICENSE).  
+Copyright (c) 2026 AYASCELL
+
 
 

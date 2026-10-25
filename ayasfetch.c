@@ -7,6 +7,7 @@
  *
  * Created by Ayascell (2026)
  * "Sıfırdan saf C ile yazıldı."
+ * Licensed under the MIT License.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1153,6 +1154,7 @@ static void print_help(void) {
 static void print_version(void) {
   printf("ayasfetch v1.0.3\n");
   printf("Created by Ayascell (2026) - Sıfırdan saf C ile yazıldı.\n");
+  printf("Lisans: MIT Lisansı (https://opensource.org/licenses/MIT)\n");
 }
 
 int main(int argc, char *argv[]) {

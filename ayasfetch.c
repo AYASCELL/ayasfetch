@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <ctype.h>
 /*
  * ayasfetch - A fast, lightweight, and modern system fetch tool.
@@ -204,7 +207,13 @@ int visible_length(const char *str) {
   return len;
 }
 
-void get_os_name(char *buffer, size_t size) {
+void get_os_info(char *buffer, size_t size, char *distro_id, size_t id_size,
+                 char *distro_id_like, size_t like_size) {
+  if (distro_id && id_size > 0)
+    distro_id[0] = '\0';
+  if (distro_id_like && like_size > 0)
+    distro_id_like[0] = '\0';
+
   FILE *f = fopen("/etc/os-release", "r");
   char name[256] = "Unknown Linux";
   if (f) {
@@ -218,8 +227,25 @@ void get_os_name(char *buffer, size_t size) {
         int len = strlen(start);
         if (len > 0 && start[len - 1] == '"')
           start[len - 1] = '\0';
-        strncpy(name, start, sizeof(name) - 1);
-        break;
+        snprintf(name, sizeof(name), "%s", start);
+      } else if (distro_id && strncmp(line, "ID=", 3) == 0) {
+        char *start = line + 3;
+        if (*start == '"')
+          start++;
+        trim_newline(start);
+        int len = strlen(start);
+        if (len > 0 && start[len - 1] == '"')
+          start[len - 1] = '\0';
+        snprintf(distro_id, id_size, "%s", start);
+      } else if (distro_id_like && strncmp(line, "ID_LIKE=", 8) == 0) {
+        char *start = line + 8;
+        if (*start == '"')
+          start++;
+        trim_newline(start);
+        int len = strlen(start);
+        if (len > 0 && start[len - 1] == '"')
+          start[len - 1] = '\0';
+        snprintf(distro_id_like, like_size, "%s", start);
       }
     }
     fclose(f);
@@ -229,8 +255,67 @@ void get_os_name(char *buffer, size_t size) {
   if (uname(&un) == 0) {
     snprintf(buffer, size, "%s %s", name, un.machine);
   } else {
-    strncpy(buffer, name, size);
+    snprintf(buffer, size, "%s", name);
   }
+}
+
+void get_os_name(char *buffer, size_t size) {
+  get_os_info(buffer, size, NULL, 0, NULL, 0);
+}
+
+static int is_arch_distro(const char *os, const char *id, const char *id_like) {
+  if (strcasestr(os, "Arch") || strcasestr(os, "Cachy") ||
+      strcasestr(os, "Endeavour") || strcasestr(os, "Manjaro") ||
+      strcasestr(os, "Garuda") || strcasestr(os, "Artix") ||
+      strcasestr(os, "ArcoLinux") || strcasestr(os, "BlackArch") ||
+      strcasestr(os, "ChimeraOS") || strcasestr(os, "SteamOS"))
+    return 1;
+  if (id && (strcasestr(id, "arch") || strcasestr(id, "cachyos") ||
+             strcasestr(id, "endeavouros") || strcasestr(id, "manjaro") ||
+             strcasestr(id, "garuda") || strcasestr(id, "artix") ||
+             strcasestr(id, "arcolinux") || strcasestr(id, "steamos")))
+    return 1;
+  if (id_like && strcasestr(id_like, "arch"))
+    return 1;
+  return 0;
+}
+
+static int is_ubuntu_distro(const char *os, const char *id, const char *id_like) {
+  if (strcasestr(os, "Ubuntu") || strcasestr(os, "Pop!_OS") ||
+      strcasestr(os, "Linux Mint") || strcasestr(os, "elementary"))
+    return 1;
+  if (id && (strcasestr(id, "ubuntu") || strcasestr(id, "pop") ||
+             strcasestr(id, "mint") || strcasestr(id, "elementary")))
+    return 1;
+  if (id_like && strcasestr(id_like, "ubuntu"))
+    return 1;
+  return 0;
+}
+
+static int is_debian_distro(const char *os, const char *id, const char *id_like) {
+  if (strcasestr(os, "Debian") || strcasestr(os, "Kali") ||
+      strcasestr(os, "Raspbian") || strcasestr(os, "MX"))
+    return 1;
+  if (id && (strcasestr(id, "debian") || strcasestr(id, "kali") ||
+             strcasestr(id, "raspbian") || strcasestr(id, "mx")))
+    return 1;
+  if (id_like && strcasestr(id_like, "debian"))
+    return 1;
+  return 0;
+}
+
+static int is_fedora_distro(const char *os, const char *id, const char *id_like) {
+  if (strcasestr(os, "Fedora") || strcasestr(os, "Nobara") ||
+      strcasestr(os, "RHEL") || strcasestr(os, "CentOS") ||
+      strcasestr(os, "Rocky") || strcasestr(os, "AlmaLinux"))
+    return 1;
+  if (id && (strcasestr(id, "fedora") || strcasestr(id, "nobara") ||
+             strcasestr(id, "rhel") || strcasestr(id, "centos") ||
+             strcasestr(id, "rocky") || strcasestr(id, "almalinux")))
+    return 1;
+  if (id_like && (strcasestr(id_like, "fedora") || strcasestr(id_like, "rhel")))
+    return 1;
+  return 0;
 }
 
 void get_uptime(char *buffer, size_t size) {
@@ -783,10 +868,14 @@ int main() {
   }
   gethostname(host, sizeof(host));
 
-  get_os_name(os, sizeof(os));
+  char os_id[64] = "";
+  char os_id_like[128] = "";
+  get_os_info(os, sizeof(os), os_id, sizeof(os_id), os_id_like, sizeof(os_id_like));
   if (getenv("TEST_OS")) {
     strncpy(os, getenv("TEST_OS"), sizeof(os) - 1);
     os[sizeof(os) - 1] = '\0';
+    os_id[0] = '\0';
+    os_id_like[0] = '\0';
   }
 
   struct utsname buffer;
@@ -811,16 +900,16 @@ int main() {
   int info_count = 0;
 
   char os_icon[32];
-  if (strcasestr(os, "Arch"))
-    strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
-  else if (strcasestr(os, "Ubuntu"))
-    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
-  else if (strcasestr(os, "Debian"))
-    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
-  else if (strcasestr(os, "Fedora"))
-    strncpy(os_icon, COLOR_BLUE "", sizeof(os_icon));
-  else if (strcasestr(os, "AYAS"))
+  if (strcasestr(os, "AYAS"))
     strncpy(os_icon, COLOR_GOLD "", sizeof(os_icon));
+  else if (is_arch_distro(os, os_id, os_id_like))
+    strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
+  else if (is_ubuntu_distro(os, os_id, os_id_like))
+    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
+  else if (is_debian_distro(os, os_id, os_id_like))
+    strncpy(os_icon, COLOR_RED "", sizeof(os_icon));
+  else if (is_fedora_distro(os, os_id, os_id_like))
+    strncpy(os_icon, COLOR_BLUE "", sizeof(os_icon));
   else
     strncpy(os_icon, COLOR_CYAN "", sizeof(os_icon));
 
@@ -883,27 +972,27 @@ int main() {
   int ascii_h = ascii_height_tux;
   int ascii_w = ascii_width_tux;
   const char *ascii_color = COLOR_WHITE;
-  if (strcasestr(os, "Arch")) {
-    ascii_art_ptr = ascii_art_arch;
-    ascii_h = ascii_height_arch;
-    ascii_w = ascii_width_arch;
-    ascii_color = COLOR_CYAN;
-  } else if (strcasestr(os, "AYAS")) {
+  if (strcasestr(os, "AYAS")) {
     ascii_art_ptr = ascii_art_ayasos;
     ascii_h = ascii_height_ayasos;
     ascii_w = ascii_width_ayasos;
     ascii_color = COLOR_GOLD;
-  } else if (strcasestr(os, "Ubuntu")) {
+  } else if (is_arch_distro(os, os_id, os_id_like)) {
+    ascii_art_ptr = ascii_art_arch;
+    ascii_h = ascii_height_arch;
+    ascii_w = ascii_width_arch;
+    ascii_color = COLOR_CYAN;
+  } else if (is_ubuntu_distro(os, os_id, os_id_like)) {
     ascii_art_ptr = ascii_art_ubuntu;
     ascii_h = ascii_height_ubuntu;
     ascii_w = ascii_width_ubuntu;
     ascii_color = COLOR_RED; // Ubuntu'nun meşhur turuncumsu kırmızısı
-  } else if (strcasestr(os, "Debian")) {
+  } else if (is_debian_distro(os, os_id, os_id_like)) {
     ascii_art_ptr = ascii_art_debian;
     ascii_h = ascii_height_debian;
     ascii_w = ascii_width_debian;
     ascii_color = COLOR_RED;
-  } else if (strcasestr(os, "Fedora")) {
+  } else if (is_fedora_distro(os, os_id, os_id_like)) {
     ascii_art_ptr = ascii_art_fedora;
     ascii_h = ascii_height_fedora;
     ascii_w = ascii_width_fedora;

@@ -1016,25 +1016,110 @@ static void generate_config(void) {
   printf("\x1b[32m✔ Yapılandırma dosyası oluşturuldu:\x1b[0m %s\n", path);
 }
 
+static int set_config_color(const char *color_str) {
+  char path[512];
+  get_config_path(path, sizeof(path));
+  if (path[0] == '\0') {
+    fprintf(stderr, "Hata: HOME dizini bulunamadı.\n");
+    return 0;
+  }
+
+  char dir[512];
+  snprintf(dir, sizeof(dir), "%s", path);
+  char *slash = strrchr(dir, '/');
+  if (slash) {
+    *slash = '\0';
+    char cmd[550];
+    snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
+    (void)system(cmd);
+  }
+
+  char new_content[4096] = "";
+  int found = 0;
+  FILE *f = fopen(path, "r");
+  if (f) {
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+      char *p = line;
+      while (*p == ' ' || *p == '\t')
+        p++;
+      if (strncasecmp(p, "color", 5) == 0 &&
+          (p[5] == ' ' || p[5] == '=' || p[5] == '\t')) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "color = %s\n", color_str);
+        if (strlen(new_content) + strlen(buf) < sizeof(new_content) - 1)
+          strcat(new_content, buf);
+        found = 1;
+      } else {
+        if (strlen(new_content) + strlen(line) < sizeof(new_content) - 1)
+          strcat(new_content, line);
+      }
+    }
+    fclose(f);
+  }
+
+  if (!found) {
+    if (new_content[0] == '\0') {
+      snprintf(new_content, sizeof(new_content),
+               "# ayasfetch Yapılandırma Dosyası\n"
+               "# Konum: %s\n\n"
+               "color = %s\n",
+               path, color_str);
+    } else {
+      char buf[256];
+      snprintf(buf, sizeof(buf), "\ncolor = %s\n", color_str);
+      if (strlen(new_content) + strlen(buf) < sizeof(new_content) - 1)
+        strcat(new_content, buf);
+    }
+  }
+
+  FILE *out = fopen(path, "w");
+  if (!out) {
+    fprintf(stderr, "Hata: Yapılandırma dosyasına yazılamadı: %s\n", path);
+    return 0;
+  }
+  fputs(new_content, out);
+  fclose(out);
+  return 1;
+}
+
+static int reset_config(void) {
+  char path[512];
+  get_config_path(path, sizeof(path));
+  if (path[0] == '\0')
+    return 0;
+
+  if (unlink(path) == 0) {
+    printf("\x1b[32m✔ Yapılandırma dosyası sıfırlandı ve silindi:\x1b[0m %s\n", path);
+    printf("Varsayılan dağıtım renklerine dönüldü.\n\n");
+    return 1;
+  } else {
+    printf("Zaten özel bir yapılandırma dosyası yok. Sistem varsayılan dağıtım modunda.\n\n");
+    return 0;
+  }
+}
+
 static void print_color_list(void) {
   printf("\n\x1b[1;97mayasfetch Renk Paleti:\x1b[0m\n\n");
-  printf("  \x1b[38;2;23;147;209m● cyan\x1b[0m      \x1b[90m->\x1b[0m  Arch Mavisi / Turkuaz \x1b[90m(#1793d1)\x1b[0m\n");
-  printf("  \x1b[38;2;218;165;32m● gold\x1b[0m      \x1b[90m->\x1b[0m  AYAS OS Altın Sarısı \x1b[90m(#daa520)\x1b[0m\n");
-  printf("  \x1b[38;2;52;152;219m● blue\x1b[0m      \x1b[90m->\x1b[0m  Fedora Mavisi \x1b[90m(#3498db)\x1b[0m\n");
-  printf("  \x1b[38;2;231;76;60m● red\x1b[0m       \x1b[90m->\x1b[0m  Ubuntu / Debian Kırmızısı \x1b[90m(#e74c3c)\x1b[0m\n");
-  printf("  \x1b[38;2;46;204;113m● green\x1b[0m     \x1b[90m->\x1b[0m  Zümrüt Yeşili \x1b[90m(#2ecc71)\x1b[0m\n");
-  printf("  \x1b[38;2;155;89;182m● purple\x1b[0m    \x1b[90m->\x1b[0m  Asil Mor \x1b[90m(#9b59b6)\x1b[0m\n");
-  printf("  \x1b[38;2;224;86;253m● magenta\x1b[0m   \x1b[90m->\x1b[0m  Parlak Macenta \x1b[90m(#e056fd)\x1b[0m\n");
-  printf("  \x1b[38;2;255;105;180m● pink\x1b[0m      \x1b[90m->\x1b[0m  Canlı Pembe \x1b[90m(#ff69b4)\x1b[0m\n");
-  printf("  \x1b[38;2;230;126;34m● orange\x1b[0m    \x1b[90m->\x1b[0m  Turuncu \x1b[90m(#e67e22)\x1b[0m\n");
-  printf("  \x1b[1;97m● white\x1b[0m     \x1b[90m->\x1b[0m  Saf Beyaz \x1b[90m(#ffffff)\x1b[0m\n");
-  printf("  \x1b[38;2;127;140;141m● gray\x1b[0m      \x1b[90m->\x1b[0m  Minimalist Gri \x1b[90m(#7f8c8d)\x1b[0m\n\n");
+  printf("  \x1b[37m● auto / default\x1b[0m \x1b[90m->\x1b[0m  Sistemin orijinal dağıtım rengi (Cachy/Arch için Cyan, AYAS için Gold)\n");
+  printf("  \x1b[38;2;23;147;209m● cyan\x1b[0m           \x1b[90m->\x1b[0m  Arch Mavisi / Turkuaz \x1b[90m(#1793d1)\x1b[0m\n");
+  printf("  \x1b[38;2;218;165;32m● gold\x1b[0m           \x1b[90m->\x1b[0m  AYAS OS Altın Sarısı \x1b[90m(#daa520)\x1b[0m\n");
+  printf("  \x1b[38;2;52;152;219m● blue\x1b[0m           \x1b[90m->\x1b[0m  Fedora Mavisi \x1b[90m(#3498db)\x1b[0m\n");
+  printf("  \x1b[38;2;231;76;60m● red\x1b[0m            \x1b[90m->\x1b[0m  Ubuntu / Debian Kırmızısı \x1b[90m(#e74c3c)\x1b[0m\n");
+  printf("  \x1b[38;2;46;204;113m● green\x1b[0m          \x1b[90m->\x1b[0m  Zümrüt Yeşili \x1b[90m(#2ecc71)\x1b[0m\n");
+  printf("  \x1b[38;2;155;89;182m● purple\x1b[0m         \x1b[90m->\x1b[0m  Asil Mor \x1b[90m(#9b59b6)\x1b[0m\n");
+  printf("  \x1b[38;2;224;86;253m● magenta\x1b[0m        \x1b[90m->\x1b[0m  Parlak Macenta \x1b[90m(#e056fd)\x1b[0m\n");
+  printf("  \x1b[38;2;255;105;180m● pink\x1b[0m           \x1b[90m->\x1b[0m  Canlı Pembe \x1b[90m(#ff69b4)\x1b[0m\n");
+  printf("  \x1b[38;2;230;126;34m● orange\x1b[0m         \x1b[90m->\x1b[0m  Turuncu \x1b[90m(#e67e22)\x1b[0m\n");
+  printf("  \x1b[1;97m● white\x1b[0m          \x1b[90m->\x1b[0m  Saf Beyaz \x1b[90m(#ffffff)\x1b[0m\n");
+  printf("  \x1b[38;2;127;140;141m● gray\x1b[0m           \x1b[90m->\x1b[0m  Minimalist Gri \x1b[90m(#7f8c8d)\x1b[0m\n\n");
   printf("\x1b[1;97mÖzel Hex Kodu (24-bit TrueColor):\x1b[0m\n");
   printf("  İstediğiniz herhangi bir HEX renk kodunu (#RRGGBB veya #RRGGBBAA) verebilirsiniz.\n");
-  printf("  Örnek: \x1b[36mayasfetch --color '#fc0fc0'\x1b[0m  veya  \x1b[36mayasfetch -c '#fc0fc0fc'\x1b[0m\n\n");
+  printf("  Örnek: \x1b[36mayasfetch -c '#fc0fc0'\x1b[0m  veya  \x1b[36mayasfetch -s '#fc0fc0'\x1b[0m\n\n");
   printf("\x1b[1;97mKullanım:\x1b[0m\n");
-  printf("  ayasfetch -c <renk>\n");
-  printf("  ayasfetch --color <renk>\n\n");
+  printf("  ayasfetch -c <renk>       (Geçici renk dener)\n");
+  printf("  ayasfetch -s <renk>       (Rengi kalıcı kaydeder)\n");
+  printf("  ayasfetch -s auto         (Varsayılana sıfırlar)\n\n");
 }
 
 static void print_help(void) {
@@ -1042,17 +1127,24 @@ static void print_help(void) {
   printf("\x1b[1mKULLANIM:\x1b[0m\n");
   printf("  ayasfetch [SEÇENEKLER]\n\n");
   printf("\x1b[1mSEÇENEKLER:\x1b[0m\n");
-  printf("  -c, --color <renk>       Tema rengini ayarlar (isim veya #fc0fc0)\n");
-  printf("      --list-colors        Kullanılabilir tüm renkleri listeler\n");
+  printf("  -c, --color <renk>       Geçici olarak tema rengini ayarlar (isim veya #fc0fc0)\n");
+  printf("  -s, --set-color <renk>   Tema rengini kalıcı olarak yapılandırma dosyasına kaydeder\n");
+  printf("      --reset-config       Yapılandırmayı sıfırlar ve varsayılan dağıtım moduna döner\n");
+  printf("      --list-colors        Kullanılabilir tüm renkleri ve formatları listeler\n");
   printf("      --gen-config         ~/.config/ayasfetch/config dosyasını oluşturur\n");
   printf("  -v, --version            Sürüm bilgisini gösterir\n");
   printf("  -h, --help               Bu yardım ekranını gösterir\n\n");
   printf("\x1b[1mÖRNEKLER:\x1b[0m\n");
+  printf("  # Geçici renk deneme:\n");
   printf("  ayasfetch -c gold\n");
   printf("  ayasfetch -c purple\n");
-  printf("  ayasfetch -c '#fc0fc0'\n");
-  printf("  ayasfetch --list-colors\n");
-  printf("  ayasfetch --color list\n\n");
+  printf("  ayasfetch -c '#fc0fc0'\n\n");
+  printf("  # Beğendiğiniz rengi kalıcı yapma:\n");
+  printf("  ayasfetch -s purple\n");
+  printf("  ayasfetch --set-color '#fc0fc0'\n\n");
+  printf("  # Varsayılan dağıtım rengine dönme:\n");
+  printf("  ayasfetch -s auto\n");
+  printf("  ayasfetch --reset-config\n\n");
   printf("\x1b[1mYAPILANDIRMA DOSYASI:\x1b[0m\n");
   printf("  ~/.config/ayasfetch/config\n");
   printf("  (Güncellemelerde silinmez, ayarlarınız kalıcı kalır)\n\n");
@@ -1065,6 +1157,7 @@ static void print_version(void) {
 
 int main(int argc, char *argv[]) {
   char cli_color_arg[64] = "";
+  char set_color_arg[64] = "";
   char custom_color_ansi[64] = "";
   int custom_color_set = 0;
 
@@ -1081,6 +1174,18 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(argv[i], "--gen-config") == 0) {
       generate_config();
       return 0;
+    } else if (strcmp(argv[i], "--reset-config") == 0 || strcmp(argv[i], "--reset") == 0) {
+      reset_config();
+      // Devam et ve varsayılan modda çıktıyı bas
+    } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--set-color") == 0 || strcmp(argv[i], "--set") == 0) {
+      if (i + 1 < argc) {
+        strncpy(set_color_arg, argv[++i], sizeof(set_color_arg) - 1);
+      } else {
+        fprintf(stderr, "Hata: %s seçeneği bir renk değeri gerektirir.\n", argv[i]);
+        return 1;
+      }
+    } else if (strncmp(argv[i], "--set-color=", 12) == 0) {
+      strncpy(set_color_arg, argv[i] + 12, sizeof(set_color_arg) - 1);
     } else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--color") == 0) {
       if (i + 1 < argc) {
         strncpy(cli_color_arg, argv[++i], sizeof(cli_color_arg) - 1);
@@ -1093,7 +1198,31 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (cli_color_arg[0] != '\0') {
+  // Kalıcı renk kaydetme (-s / --set-color)
+  if (set_color_arg[0] != '\0') {
+    if (strcasecmp(set_color_arg, "list") == 0) {
+      print_color_list();
+      return 0;
+    }
+    char test_ansi[64] = "";
+    if (!resolve_color(set_color_arg, test_ansi, sizeof(test_ansi))) {
+      fprintf(stderr, "Hata: '%s' geçerli bir renk veya #RRGGBB hex kodu değil.\nKullanılabilir renkler için: ayasfetch --list-colors\n", set_color_arg);
+      return 1;
+    }
+    if (set_config_color(set_color_arg)) {
+      char cfg_path[512];
+      get_config_path(cfg_path, sizeof(cfg_path));
+      if (strcasecmp(set_color_arg, "auto") == 0 || strcasecmp(set_color_arg, "default") == 0) {
+        printf("\x1b[32m✔ Renk varsayılana sıfırlandı:\x1b[0m auto \x1b[90m(%s)\x1b[0m\n\n", cfg_path);
+        custom_color_set = 0;
+      } else {
+        printf("\x1b[32m✔ Renk kalıcı olarak kaydedildi:\x1b[0m \x1b[1m%s\x1b[0m \x1b[90m(%s)\x1b[0m\n\n", set_color_arg, cfg_path);
+        snprintf(custom_color_ansi, sizeof(custom_color_ansi), "%s", test_ansi);
+        custom_color_set = 1;
+      }
+    }
+  } else if (cli_color_arg[0] != '\0') {
+    // Geçici anlık renk (-c / --color)
     if (strcasecmp(cli_color_arg, "list") == 0) {
       print_color_list();
       return 0;
@@ -1105,6 +1234,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Uyarı: '%s' geçerli bir renk veya #RRGGBB hex kodu değil. Varsayılan renk kullanılıyor.\n", cli_color_arg);
     }
   } else {
+    // CLI argümanı verilmediyse, config dosyasından oku
     char config_color[64] = "";
     read_config(config_color, sizeof(config_color));
     if (config_color[0] != '\0') {
